@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "Santri": {
+      "title": "Santri",
+      "description": "Data penghuni kamar pondok",
+      "type": "object",
+      "properties": {
+        "nama": { "type": "string", "description": "Nama lengkap santri" },
+        "kamar": { "type": "string", "description": "Nama/Nomor kamar" },
+        "saldo": { "type": "number", "description": "Saldo uang saku saat ini" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Waktu pendaftaran" }
+      },
+      "required": ["nama", "kamar", "saldo"]
+    },
+    "Transaksi": {
+      "title": "Transaksi",
+      "description": "Riwayat setoran dan pengambilan uang",
+      "type": "object",
+      "properties": {
+        "santriId": { "type": "string", "description": "ID referensi ke document santri" },
+        "namaSantri": { "type": "string", "description": "Nama santri saat transaksi" },
+        "type": { "type": "string", "enum": ["setoran", "pengambilan"], "description": "Jenis transaksi" },
+        "jumlah": { "type": "number", "description": "Nominal uang" },
+        "tanggal": { "type": "string", "format": "date-time", "description": "Waktu transaksi" },
+        "catatan": { "type": "string", "description": "Catatan opsional" }
+      },
+      "required": ["santriId", "type", "jumlah", "tanggal"]
+    }
+  },
+  "firestore": {
+    "/santri": {
+      "schema": "Santri",
+      "description": "Koleksi data santri"
+    },
+    "/transaksi": {
+      "schema": "Transaksi",
+      "description": "Koleksi riwayat transaksi"
+    }
+  }
+}

@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Santri validation
+    function isValidSantri(data) {
+      return data.nama is string && data.nama.size() > 0 && data.nama.size() <= 200 &&
+             data.kamar is string && data.kamar.size() > 0 && data.kamar.size() <= 100 &&
+             data.saldo is number && data.saldo >= 0 &&
+             (!data.keys().hasAny(['fotoUrl']) || (data.fotoUrl is string && data.fotoUrl.size() <= 2000000));
+    }
+
+    // Transaksi validation
+    function isValidTransaksi(data) {
+      return data.santriId is string && isValidId(data.santriId) &&
+             data.namaSantri is string && data.namaSantri.size() <= 200 &&
+             data.type in ['setoran', 'pengambilan'] &&
+             data.jumlah is number && data.jumlah > 0 &&
+             data.tanggal is timestamp &&
+             (data.keys().hasOnly(['santriId', 'namaSantri', 'type', 'jumlah', 'tanggal', 'catatan']));
+    }
+
+    // Santri rules
+    match /santri/{santriId} {
+      allow read: if isEmailVerified();
+      allow create: if isEmailVerified() && 
+                    isValidSantri(incoming()) && 
+                    incoming().createdAt == request.time &&
+                    incoming().keys().hasAll(['nama', 'kamar', 'saldo', 'createdAt']) &&
+                    incoming().keys().hasOnly(['nama', 'kamar', 'saldo', 'createdAt', 'fotoUrl']);
+      allow update: if isEmailVerified() && 
+                    isValidSantri(incoming()) && 
+                    incoming().diff(existing()).affectedKeys().hasOnly(['saldo', 'nama', 'kamar', 'fotoUrl']);
+      allow delete: if isEmailVerified();
+    }
+
+    // Transaksi rules
+    match /transaksi/{transaksiId} {
+      allow read: if isEmailVerified();
+      allow create: if isEmailVerified() && 
+                    isValidTransaksi(incoming()) && 
+                    incoming().tanggal == request.time;
+      allow update: if false;
+      allow delete: if isEmailVerified();
+    }
+  }
+}
